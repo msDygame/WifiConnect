@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">WifiConnect</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="button_text">ButtonName</string>
+    <string name="turnoffwifi">Off</string>
+    <string name="turnonwifi">On</string>
+    <string name="poptitle">Unknown</string>
+    <string name="popinputps">Enter Password</string>
+    <string name="popconnection">Connect</string>
+    <string name="popcancel">Cancel</string>
+    <string name="list_description">Here</string>
+    <string name="list_data">Data</string>
+    <string name="runtime_version">1.0.0.0</string>
+</resources>
