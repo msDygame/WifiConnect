@@ -34,6 +34,10 @@ import android.widget.TextView;
 import android.widget.ToggleButton;
 import android.util.Log;
 
+import java.math.BigInteger;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,20 +48,18 @@ public class MainActivity extends ActionBarActivity
     // 定義WifiInfo對像
     protected WifiInfo mWifiInfo;
     // 掃瞄出的網絡連接列表
-    private List<ScanResult> mWifiList;
+    private List<ScanResult> mWifiListScanResult;
     // 網絡連接列表
     protected List<WifiConfiguration> mWifiConfiguration;
     // 定義一個WifiLock
-    private ListView mWifilsit;
+    private ListView mWifiLsitView;
     ToggleButton mTurnwifi;
     wifiAdapeter adapter;
     private WifiBroadRecever mWifiBroadRecever;
-    public static final int TYPE_NO_PASSWD = 0x11;
-    public static final int TYPE_WEP = 0x12;
-    public static final int TYPE_WPA = 0x13;
+
     private String mLocalShow = "Connected";
     private TextView mConnectshow;
-    private String TAG = "test";
+    private String TAG = "WifiConnectLog";
     private PopupWindow mShowCPopu = null;
     private View mShowCView;
     @Override
@@ -69,6 +71,8 @@ public class MainActivity extends ActionBarActivity
         mWifiManager = (WifiManager) MainActivity.this.getSystemService(Context.WIFI_SERVICE);
         // 取得WifiInfo對像
         mWifiInfo = mWifiManager.getConnectionInfo();
+        String sWifi = (mWifiManager == null) ? "wifi is null" : "wifi ready" ;
+        Log.i(TAG, "onCreate " + sWifi);
         initView();
         RegisterWifiRecever();
         refreshWifiList();
@@ -99,15 +103,13 @@ public class MainActivity extends ActionBarActivity
         return super.onOptionsItemSelected(item);
     }
 
-    private void pXspy()
+    private void getWifiListAndSetAdapter()
     {
         getWifiList();
-        // Log.i(TAG, "====>:"+mWifiList);
-        if (mWifiList != null)
+        if (mWifiListScanResult != null)
         {
-            // Log.i(TAG, "====>size:"+mWifiList.size());
             adapter = new wifiAdapeter();
-            mWifilsit.setAdapter(adapter);
+            mWifiLsitView.setAdapter(adapter);
         }
     }
 
@@ -122,13 +124,13 @@ public class MainActivity extends ActionBarActivity
     private void pXspys()
     {
         getWifiList();
-        if (mWifiList != null)
+        if (mWifiListScanResult != null)
         {
             adapter.notifyDataSetChanged();
         }
-        if (mWifiList == null)
+        if (mWifiListScanResult == null)
         {
-            mWifiList = new ArrayList<ScanResult>();
+            mWifiListScanResult = new ArrayList<ScanResult>();
             adapter.notifyDataSetChanged();
         }
     }
@@ -140,20 +142,26 @@ public class MainActivity extends ActionBarActivity
     private void initView()
     {
         // TODO Auto-generated method stub
-        mWifilsit = (ListView) findViewById(R.id.wifishowlist);
+        mWifiLsitView = (ListView) findViewById(R.id.wifishowlist);
         mTurnwifi = (ToggleButton) findViewById(R.id.turnwifi);
         mConnectshow = (TextView) findViewById(R.id.turnwifi);
         mTurnwifi.setTextOff(getString(R.string.turnoffwifi));
         mTurnwifi.setTextOn(getString(R.string.turnonwifi));
+
+        String sButtonState = (mTurnwifi == null) ? "Button is null" : "Button is ready";
+        Log.i(TAG, "wifi initView " + sButtonState);
+        String sListState = (mWifiLsitView == null) ? "List is null" : "List is ready";
+        Log.i(TAG, "wifi initView " + sListState);
         if (mWifiManager.isWifiEnabled())
         {
             mTurnwifi.setChecked(true);
-            pXspy();
+            getWifiListAndSetAdapter();
             Log.i(TAG, "wifi info" + getWifiInfo());
         }
         else
         {
             mTurnwifi.setChecked(false);
+            Log.i(TAG, "wifi info check false");
         }
         mTurnwifi.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener()
         {
@@ -164,31 +172,34 @@ public class MainActivity extends ActionBarActivity
                 Log.i(TAG, "log make info:" + isChecked);
                 if (isChecked)
                 {
+                    Log.i(TAG, "open wifi");
                     openWifi();
                 }
                 else
                 {
-                    if (mWifiList != null)
+                    if (mWifiListScanResult != null)
                     {
+                        Log.i(TAG, "close wifi");
                         closeWifi();
                         pXspys();
                     }
+                    Log.i(TAG, "onCheckChange but wifiList is null");
                 }
             }
         });
-        mWifilsit.setOnItemClickListener(new AdapterView.OnItemClickListener()
+        mWifiLsitView.setOnItemClickListener(new AdapterView.OnItemClickListener()
         {
             @Override
             public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3)
             {
                 // TODO Auto-generated method stub
-                int loac = arg2 - mWifiList.size();
+                int loac = arg2 - mWifiListScanResult.size();
                 Log.i(TAG, "local position:" + arg2 + "long:" + arg3);
 
                 if (loac < 0)
                 {
                     Log.i(TAG, "local position:" + arg2);
-                    ScanResult sr = mWifiList.get(arg2);
+                    ScanResult sr = mWifiListScanResult.get(arg2);
 
                     Log.i(TAG, "<----->" + sr.SSID);
                     WifiConfiguration c = checkWiFiConfig(sr.SSID);
@@ -282,7 +293,7 @@ public class MainActivity extends ActionBarActivity
         // mWifiManager.;
         mWifiManager.startScan();
         // 得到掃瞄結果
-        mWifiList = mWifiManager.getScanResults();
+        mWifiListScanResult = mWifiManager.getScanResults();
         // 得到配置好的網絡連接
         mWifiConfiguration = mWifiManager.getConfiguredNetworks();
     }
@@ -343,7 +354,8 @@ public class MainActivity extends ActionBarActivity
     private void refreshWifiList()
     {
         handler.removeMessages(DEFINE_MESSAGE_WHAT);
-        handler.sendEmptyMessageDelayed(DEFINE_MESSAGE_WHAT, 5000);
+        handler.sendEmptyMessageDelayed(DEFINE_MESSAGE_WHAT, 10000);
+        Log.i(TAG, "Handle Message push");
     }
 
     Handler handler = new Handler()
@@ -353,9 +365,11 @@ public class MainActivity extends ActionBarActivity
         {
             // TODO Auto-generated method stub
             super.handleMessage(msg);
+            Log.i(TAG, "Handle Message income..");
             if (msg.what == DEFINE_MESSAGE_WHAT)
             {
-                pXspy();
+                getWifiListAndSetAdapter();
+                Log.i(TAG, "Handle Message income");
             }
         }
     };
@@ -366,12 +380,12 @@ public class MainActivity extends ActionBarActivity
         public int getCount()
         {
             // TODO Auto-generated method stub
-            if (mWifiConfiguration != null && mWifiList != null)
+            if (mWifiConfiguration != null && mWifiListScanResult != null)
             {
-                return mWifiList.size() + mWifiConfiguration.size();
+                return mWifiListScanResult.size() + mWifiConfiguration.size();
             }
-            if (mWifiList != null)
-                return mWifiList.size();
+            if (mWifiListScanResult != null)
+                return mWifiListScanResult.size();
             else
                 return 0;
         }
@@ -394,52 +408,92 @@ public class MainActivity extends ActionBarActivity
         public View getView(int position, View convertView, ViewGroup parent)
         {
             // TODO Auto-generated method stub
-            int local = position - mWifiList.size();
+            int local = position - mWifiListScanResult.size();
             View v = getLayoutInflater().inflate(R.layout.list_item, null);
             ImageView img = (ImageView) v.findViewById(R.id.img);
-            TextView tx = (TextView) v.findViewById(R.id.title);
-            TextView tx1 = (TextView) v.findViewById(R.id.isconnect);
+            TextView tvTitle = (TextView) v.findViewById(R.id.title);
+            TextView tvConnect = (TextView) v.findViewById(R.id.isconnect);
+            // Wifi源名稱
             String currSsid = mWifiInfo.getSSID();
             if (local < 0)
             {
-                ScanResult sr = mWifiList.get(position);
+                ScanResult sr = mWifiListScanResult.get(position);
                 String ssid = sr.SSID;
-                tx.setText(ssid);
+                tvTitle.setText(ssid);
                 if (currSsid != null)
+                {
                     if (ssid.contains(currSsid))
                     {
-                        // Log.i(TAG, "eques");
-                        tx1.setText("Connected");
+                        tvConnect.setText("Connected");
                     }
+                }
                 Log.i(TAG, "sr.capabilities:" + sr.capabilities);
-
-                int numLevels = 5 ;
-                int iLevel = WifiManager.calculateSignalLevel(sr.level, numLevels) ;
-
-                if (Math.abs(sr.level) > 100)
+                // Wifi的連接速度及信號強度：
+                int numLevels = 5 ;//max=5,
+                // 連接信號強度
+                int iStrengthLevel = WifiManager.calculateSignalLevel(sr.level, numLevels) ;
+                //current connect value:
+                //取得 IpAddress ↓
+                int ip = mWifiInfo.getIpAddress() ;
+                // Convert little-endian to big-endianif needed
+                if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN))
                 {
-                    img.setImageDrawable(getResources().getDrawable( R.drawable.wifi05));
+                    ip = Integer.reverseBytes(ip);
                 }
-                else if (Math.abs(sr.level) > 80)
+                byte[] ipByteArray = BigInteger.valueOf(ip).toByteArray();
+                String sIpAddressString;
+                try
                 {
-                    img.setImageDrawable(getResources().getDrawable( R.drawable.wifi04));
+                    sIpAddressString = InetAddress.getByAddress(ipByteArray).getHostAddress();
                 }
-                else if (Math.abs(sr.level) > 70)
+                catch (UnknownHostException ex)
                 {
-                    img.setImageDrawable(getResources().getDrawable( R.drawable.wifi04));
+                    Log.e("WIFIIP", "Unable to get host address.");
+                    sIpAddressString = null;
                 }
-                else if (Math.abs(sr.level) > 60)
-                {
-                    img.setImageDrawable(getResources().getDrawable( R.drawable.wifi03));
-                }
-                else if (Math.abs(sr.level) > 50)
-                {
-                    img.setImageDrawable(getResources().getDrawable( R.drawable.wifi02));
-                }
-                else
-                {
-                    img.setImageDrawable(getResources().getDrawable( R.drawable.wifi01));
-                }
+                //連接信號強度
+                int iConnectLevel = mWifiInfo.getRssi() ;
+                //連接速度 , link speed unit -> Mbps
+                int iSpeed = mWifiInfo.getLinkSpeed();
+                Log.i(TAG, "WifiInfo ip:"+sIpAddressString);
+                Log.i(TAG, "WifiInfo level:"+iConnectLevel);
+                Log.i(TAG, "WifiInfo speed:"+iSpeed+"Mbps");
+                /*實際執行結果:
+                        title           Level       Strength
+                        ----            -------     ----------
+                        game01          -44     4
+                        game05          -46     4
+                        gameDLink     -59     3
+                        game02          -62     3
+                        game03          -72     2
+                        game04          -80     1
+                         //
+                        if (Math.abs(sr.level) > 100)
+                        {
+                            img.setImageDrawable(getResources().getDrawable( R.drawable.wifi05));
+                        }
+                        else if (Math.abs(sr.level) > 70)
+                        {
+                            img.setImageDrawable(getResources().getDrawable(R.drawable.wifi04));
+                        }
+                        else if (Math.abs(sr.level) > 60)
+                        {
+                            img.setImageDrawable(getResources().getDrawable(R.drawable.wifi03));
+                        }
+                        else if (Math.abs(sr.level) > 50)
+                        {
+                            img.setImageDrawable(getResources().getDrawable(R.drawable.wifi02));
+                        }
+                        else
+                        {
+                            img.setImageDrawable(getResources().getDrawable( R.drawable.wifi01));
+                        }
+                        */
+                if (iStrengthLevel >= 4) img.setImageDrawable(getResources().getDrawable( R.drawable.wifi01));//full
+                if (iStrengthLevel == 3) img.setImageDrawable(getResources().getDrawable( R.drawable.wifi02));//line third
+                if (iStrengthLevel == 2) img.setImageDrawable(getResources().getDrawable( R.drawable.wifi03));//line two
+                if (iStrengthLevel == 1) img.setImageDrawable(getResources().getDrawable( R.drawable.wifi04));//line one
+                if (iStrengthLevel == 0) img.setImageDrawable(getResources().getDrawable( R.drawable.wifi05));//zero
                 return v;
             }
             else
@@ -448,13 +502,14 @@ public class MainActivity extends ActionBarActivity
                 String ssid = cf.SSID;
 
                 if (currSsid != null && ssid != null)
+                {
                     if (ssid.contains(currSsid))
                     {
                         return v;
                     }
-                if (ssid != null)
-                    tx.setText(ssid);
-                tx1.setText("Out of Range");//不在範圍內//Not within the scope?
+                }
+                if (ssid != null) tvTitle.setText(ssid);
+                tvConnect.setText("Out of Range");//不在範圍內//Not within the scope?
                 return v;
             }
         }
@@ -504,14 +559,13 @@ public class MainActivity extends ActionBarActivity
         public void onReceive(Context context, Intent intent)
         {
             // TODO Auto-generated method stub
-            // Log.i(TAG, "action info:"+intent.getAction());
             if (intent.getAction().equals(WifiManager.ACTION_PICK_WIFI_NETWORK))
             {
 
             }
             else if (intent.getAction().equals( WifiManager.SCAN_RESULTS_AVAILABLE_ACTION))
             {
-                // pXspy();
+                getWifiListAndSetAdapter() ;//更新太頻繁...
             }
 
             if (intent.getAction().equals(WifiManager.RSSI_CHANGED_ACTION))
